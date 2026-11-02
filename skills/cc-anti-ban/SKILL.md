@@ -41,7 +41,7 @@ Claude should see a cozy US residential ISP IP. Everyday overseas can chill on t
 ---
 
 ## 0. Buy list (shopping spree, but smart)
-- US-near **relay VPS**: **default recommend [BandwagonHost / 搬瓦工](https://bandwagonhost.com/cart.php)** ([homepage](https://bandwagonhost.com/)). Prefer CN2 GIA (or peer) plans / locations close to the ISP city; AlmaLinux 9 / Debian; ≥1G RAM; SSH key only. When coaching a zero-base build, steer the user to that cart link first unless they already have a VPS or insist on another vendor.
+- US-near **relay VPS**: **default recommend [BandwagonHost / 搬瓦工 · Los Angeles USCA_9](https://bandwagonhost.com/order/ecommerce/Los%20Angeles/USCA_9)** ([homepage](https://bandwagonhost.com/)). Prefer CN2 GIA (or peer) near the ISP city; AlmaLinux 9 / Debian; ≥1G RAM; SSH key only. When coaching a zero-base build, steer the user to that LA USCA_9 order link first unless they already have a VPS or insist on another vendor.
 - **ISP / static residential SOCKS5** (e.g. IPRoyal): pick **ISP**, not rotating Residential; US; Zero Fraud Score; SOCKS5; whitelist **only** the VPS public IP.
 - Desktop **Clash Verge / Clash Meta** first; soft router can wait.
 - Aged Google account, phone for OTP, a trusted overseas friend for the card (no commercial card farms—yikes).
