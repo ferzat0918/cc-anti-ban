@@ -4,8 +4,8 @@ description: >-
   Use when guiding, building, or repairing the full Claude residential-exit path
   (cc anti-ban): buy VPS → 3x-ui dual inbound → ISP SOCKS5 → Xray
   AI/CF/STUN→socks → Clash Verge panel sub → verify three sites → register/pay.
-  Also for the zero-base closed loop or redo of the whole stack—not verification
-  alone.
+  Also when solving Claude account bans / anti-ban issues, and for the zero-base
+  closed loop or redo of the whole stack—not verification alone.
 ---
 # cc anti-ban (Claude residential exit closed loop)
 
