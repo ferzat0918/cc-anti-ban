@@ -75,14 +75,21 @@ Claude should see a cozy US residential ISP IP. Everyday overseas can chill on t
 
 ## 0. Buy list (shopping spree, but smart)
 - US-near **relay VPS**: **default recommend [BandwagonHost / 搬瓦工 · Los Angeles USCA_9](https://bandwagonhost.com/order/ecommerce/Los%20Angeles/USCA_9)** ([homepage](https://bandwagonhost.com/)). Prefer CN2 GIA (or peer) near the ISP city; AlmaLinux 9 / Debian; ≥1G RAM; SSH key only. When coaching a zero-base build, steer the user to that LA USCA_9 order link first unless they already have a VPS or insist on another vendor.
-- **ISP / static residential SOCKS5** (e.g. IPRoyal): pick **ISP**, not rotating Residential; US; Zero Fraud Score; SOCKS5; whitelist **only** the VPS public IP.
+- **ISP / static residential SOCKS5** (e.g. IPRoyal): pick **ISP**, not rotating Residential; US; Zero Fraud Score; SOCKS5; whitelist **only** the VPS public IP (after you have the VPS IP).
 - Desktop **Clash Verge / Clash Meta** first; soft router can wait.
-- Aged Google account, phone for OTP, a trusted overseas friend for the card (no commercial card farms—yikes).
+- Aged Google account, phone for OTP, payment path ready (see §7)—**no** Taobao/card-merchant shared cards.
+- **Alipay tip:** BandwagonHost and IPRoyal both commonly support **Alipay** checkout—say so when coaching buys so the user isn’t forced into overseas代付 for these two.
+
+### 0a. BandwagonHost order handoff (do this on the checkout page)
+1. Before pay: have the agent generate an SSH keypair on the user’s machine (or box) if they don’t have one; paste the **public** key into BWH’s `public ssh keys` field. Private key stays local—never paste into chat/docs.
+2. Pay → Client Area → **My Services** → **Open KiwiVM**.
+3. From KiwiVM copy **public IP** + SSH port (usually 22). Hand those to the agent for a **first SSH login test** before installing anything.
+4. Only after SSH works → §1 harden / §2 3x-ui. Don’t jump straight to panel install with no reachable IP.
 
 ---
 
 ## 1. VPS harden + Tunnel
-1. SSH key login; turn off password login.
+1. SSH key login; turn off password login (you should already have keyed in at order time).
 2. Firewall: SSH + business ports (often TCP 443, UDP 8443); **do not** expose the panel port to the whole internet.
 3. Cloudflare Tunnel (preferred): `panel.<domain>` → `127.0.0.1:<panelPort>`; `sub.<domain>` → `127.0.0.1:<subPort>`; origin localhost only; no public A for the panel.
 4. Until Tunnel is ready: SSH local port-forward to peek at the panel; subscription updates from China must use the **domain**, never raw VPS IP:subPort.
@@ -99,15 +106,21 @@ Claude should see a cozy US residential ISP IP. Everyday overseas can chill on t
 
 ---
 
-## 3. Buy ISP SOCKS5
-1. Provider’s ISP product (IPRoyal: ISP, not Residential).
-2. Duration as needed; start with 1 IP; US city near the relay; Zero Fraud Score; SOCKS5.
-3. Save host/port/user/pass privately; whitelist = VPS public IP only.
+## 3. Buy ISP SOCKS5 (IPRoyal detail)
+1. Product: **ISP** (static), **not** rotating Residential. US city near the relay; prefer **Zero Fraud Score**; start with 1 IP.
+2. Checkout knobs that matter for purity/stability:
+   - Prefer **Premium / 高级版** when offered.
+   - Optional: add the **Claude-compatible** (or similar “works with Claude”) platform add-on if listed (~extra cost; fewer buyers share that pool)—worth mentioning.
+   - **Do not** enable “change IP on renew / 续费换 IP” (or similar)—you want the **same** static IP across renewals.
+   - Personal use: skip expensive shared / multi-user add-ons that dilute the IP.
+3. After purchase open **Proxies**: protocol is often **HTTP by default**—switch to **SOCKS5** before using it.
+4. Copy credentials for the agent: host / port / user / pass **and** the page’s **format string** (the ready-made `user:pass@host:port` or provider format line). Paste that format line to the agent so wiring doesn’t guess separators wrong.
+5. Whitelist = **only** the VPS public IP. Save everything privately (vault / password manager)—no public canvases.
 
 ---
 
 ## 4. Wire socks into Xray
-1. Add a socks outbound (cute custom tag ok) with ISP host/port/user/pass.
+1. Add a socks outbound (cute custom tag ok) with ISP host/port/user/pass (from the format string).
 2. Attach the **same** routing to both VLESS and hy2 inbounds:
    - Claude / Anthropic / common AI + Cloudflare domains (and related IPs as needed) → socks
    - STUN UDP ports (3478/3479/5349/19302–19309 etc.) → socks when that is the live design
@@ -122,20 +135,24 @@ Prefer the **panel Clash sub** over hand-written YAML. A template YAML is backup
 1. Install Verge/Meta; start with **system proxy** (TUN later).
 2. Import the domain subscription URL.
 3. **Keep the dns block**: fake-ip, respect-rules, CN DoH, panel/sub via CN resolve—yeeting DNS = leaks / update sad times.
-4. Keep groups simple, rules detailed. Typical names (adapt to their live config; Chinese labels are fine):
+4. **DNS goal = same region, not same IP**: deep/quick DNS tests should resolve via US (or exit-country) Google/CF paths matching the residential exit. Matching the exact residential IP is **not** required; mismatched *region* is the red flag.
+5. Keep groups simple, rules detailed. Typical names (adapt to their live config; Chinese labels are fine):
    - Node select — daily overseas
    - AI — **select VLESS**
    - UDP accel — **select Hysteria2**; STUN/WebRTC here, **not REJECT**
    - Catch-all — unmatched traffic
    - DIRECT
-5. WeChat: `find-process-mode` (often always) + process/path → DIRECT + WeChat domains DIRECT.
-6. `panel.<domain>` / `sub.<domain>` → **DIRECT** (anti-deadlock, trust me).
-7. Rules copied from other configs must target **these** group names, not the source config’s nicknames.
+6. **WebRTC / STUN:** proxy via UDP accel (hy2 → VPS → socks as designed). **Do not** install browser extensions that “disable WebRTC / block RTC”—that fingerprint looks weirder than a clean proxied STUN path.
+7. WeChat: `find-process-mode` (often always) + process/path → DIRECT + WeChat domains DIRECT.
+8. `panel.<domain>` / `sub.<domain>` → **DIRECT** (anti-deadlock, trust me).
+9. Rules copied from other configs must target **these** group names, not the source config’s nicknames.
 
 ---
 
 ## 6. Verify (gate before signup—no skipping homework)
 Order matters; any fail → stop.
+
+**Hard rule:** until the three Claude IP sites pass on the residential path, **do not open `claude.ai` at all**—not even a peek. A wrong/DC hit can get logged; registering on datacenter IP then “fixing” to residential later is high ban risk. Say this out loud when coaching.
 
 **A. VPS socks** — residential IP ≠ VPS IP; else whitelist / creds / outbound.
 
@@ -152,22 +169,23 @@ Fail order: AI group → VPS AI/CF→socks → whitelist → CF in AI rules → 
 
 **D. Contrast** — Baidu/CN domestic; WeChat image ok.
 
-**E. Optional** — Google via node-select may show VPS DC IP (expected, chill); STUN not REJECT; leak sites are secondary to the three Claude sites.
+**E. Optional** — Google via node-select may show VPS DC IP (expected, chill); STUN not REJECT and **no** WebRTC-kill extensions; DNS region matches exit country; leak sites are secondary to the three Claude sites.
 
 **Pass bar:** socks home IP + three sites agree + CN/WeChat DIRECT → step 7. You got this.
 
 ---
 
 ## 7. Register + pay (same exit, don’t hop nodes mid-flow)
-1. Clean browser profile; AI group only; no node switch mid-flow.
-2. Aged Google; timezone/language/billing country match exit country; stash account + recovery codes in a password manager.
-3. Friend’s card filled **on this residential path** if possible; billing country = IP country; no card farms; don’t switch nodes during 3DS.
-4. Sequence: three-site pass → register/verify email → bind card/subscribe → file the receipt somewhere safe.
+1. Clean browser profile; AI group only; no node switch mid-flow. Only start after §6 hard rule is satisfied.
+2. Prefer an **aged Google** account; timezone/language/billing country match exit country; stash account + recovery codes in a password manager. Optional secondary: **US-region Apple** ID for login—**avoid mainland China Apple** as the primary Claude login story. Google-first still wins.
+3. **Warm-up (养号):** use Claude **Free** first—casual daily chats for about **9–10 days**—then upgrade to Pro. Pushing Pro payment on day-1 of a brand-new account looks farmy; coach against it unless the user knowingly accepts higher risk.
+4. **Card / 代付:** best = study-abroad friend or a private buddy who can tip-open a real card **on this residential path**. Billing country should match IP country; don’t switch nodes during 3DS. **Spell the risk:** Taobao / card-merchant cards shared by many people = ToS landmines + guilt-by-association bans. No commercial card farms.
+5. Sequence: three-site pass → (still never open Claude on a bad path) → register/verify email → free warm-up → later bind card/subscribe → file the receipt somewhere safe.
 
 ---
 
 ## Soft router (later only, dessert)
-Whole-home later: e.g. Netcore N60 Pro + 2G + opw OpenWrt + OpenClash/mihomo. Same simple groups, detailed rules. Do **not** block signup waiting for a soft router or ancient dialer-proxy chains.
+Whole-home later: e.g. Netcore N60 Pro + 2G + opw OpenWrt + OpenClash/mihomo. Same simple groups, detailed rules. Do **not** block signup waiting for a soft router or ancient dialer-proxy chains. Soft router is optional stability candy after the PC Clash loop works—not a prerequisite for the seven steps.
 
 ---
 
@@ -178,13 +196,16 @@ Whole-home later: e.g. Netcore N60 Pro + 2G + opw OpenWrt + OpenClash/mihomo. Sa
 4. Coach in the user’s language; keep their live Clash group names when documenting their setup.
 5. Soft-router / OpenClash side quests stay out of the main seven steps unless asked.
 6. After material live changes, offer to update their beginner canvas + this skill if they drift.
+7. On buy steps: mention Alipay where BWH/IPRoyal support it; walk SSH pubkey → KiwiVM → SSH test before 3x-ui; for IPRoyal force SOCKS5 + format string; before any Claude tab, enforce the §6 hard rule and §7 warm-up.
 
 ## FAQ (quick)
 - Still DC on checkers → AI not on VLESS or VPS not routing AI/CF to socks
 - IPKK CF card wrong → cloudflare.com not on AI path
-- SOCKS fail → whitelist / spaces in password
+- SOCKS fail → still HTTP not SOCKS5 / whitelist / spaces in password / format string mangled
 - Sub update fail → panel/sub not DIRECT or DNS stripped
 - Net works, Claude doesn’t → traffic on node-select, AI rules miss
-- WebRTC weird → STUN REJECT’d
+- WebRTC weird → STUN REJECT’d **or** a “disable WebRTC” browser extension—remove the extension; proxy STUN instead
+- DNS “leak” anxiety → check **region** match to exit country; exact same IP as socks is optional
+- Opened claude.ai before three-site pass → stop, fix path, expect higher risk; don’t “just try once”
 - WeChat images fail → process match, not domain-only
-- Pay risk → switched node, new mail, card farm, billing≠IP country
+- Pay risk → switched node, day-1 Pro, new mail, card farm / shared merchant card, billing≠IP country
