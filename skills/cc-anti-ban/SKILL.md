@@ -177,8 +177,21 @@ Domestic traffic never needs this chain—Clash/soft-router rules keep CN + WeCh
 
 ---
 
+
+## Clash rule template (ship with this skill)
+
+Companion file in this skill folder: **`clash-residential-template.yaml`** (same file on GitHub under `skills/cc-anti-ban/`).
+
+It is a scrubbed Clash Meta / mihomo starter: DNS (fake-ip + respect-rules + CN DoH), groups 「🚀 节点选择」「🤖 人工智能」「⚡ UDP加速」「🐟 漏网之鱼」, WeChat process/path → DIRECT, STUN UDP ports + stun.* → UDP加速 (**not** REJECT), Claude/Anthropic/OpenAI/Cursor/CF (+ common AI) → 人工智能, GEOIP CN → DIRECT, MATCH → 漏网之鱼. Placeholders only (`sub.你的域名`, no real IPs/tokens).
+
+**When coaching:**
+1. Prefer the **panel Clash subscription** when 3x-ui already embeds routing (§5). Use this YAML when they need a **hand-import backup**, OpenClash/mihomo without a full panel rule embed, or to show what “good rules” look like.
+2. Tell them to replace `proxy-providers.vps-sub.url` and every `你的域名` / `panel.` / `sub.` with their own domain; then pick **人工智能 → VLESS**, **UDP加速 → Hysteria2**.
+3. You may attach or paste snippets from the file; never invent a different group naming scheme unless their live config already uses other names—then remap rules to **their** names.
+4. This is a **strategy essence** list, not a full ACL museum—ok to layer rule-providers later. Soft-router OpenClash can import the same template after domain/sub edits.
+
 ## 5. Clash on the PC
-Prefer the **panel Clash sub** over hand-written YAML. A template YAML is backup only.
+Prefer the **panel Clash sub** over hand-written YAML. When they need a file, use **`clash-residential-template.yaml`** from this skill (see **Clash rule template** above)—backup / OpenClash / teaching, not a substitute for a good panel sub when one exists.
 
 1. Install Verge/Meta; start with **system proxy** (TUN later).
 2. Import the domain subscription URL.

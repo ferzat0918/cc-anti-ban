@@ -1,0 +1,276 @@
+# Clash Meta / mihomo 通用模板：Claude 家宽出口分流
+# ------------------------------------------------------------
+# 用法：
+# 1. 把下面 proxy-providers.vps-sub.url 改成你的订阅地址
+#    （形如 https://sub.你的域名/... ，不要用中转 VPS 裸 IP）
+# 2. 把 rules 里 panel.你的域名 / sub.你的域名 改成你自己的面板与订阅域名
+# 3. 导入本文件后，在策略组里手动选节点：
+#    - 「🤖 人工智能」选 VLESS（TCP/Reality）节点 → 服务器侧再出家宽 SOCKS5
+#    - 「⚡ UDP加速」选 Hysteria2 节点 → WebRTC / STUN 走这里，不要 REJECT
+#    - 「🚀 节点选择」日常境外；国内 / 微信走 DIRECT
+# 4. 面板与订阅域名必须 DIRECT，避免代理挂了更新不了订阅
+# ------------------------------------------------------------
+# 本模板已去掉真实节点 IP / UUID / 密码 / 个人域名；规则是策略精华版，
+# 不是完整 ACL 列表。日常翻墙可自行叠加 rule-providers / 订阅转换。
+# ------------------------------------------------------------
+
+mixed-port: 7890
+allow-lan: false
+mode: rule
+log-level: info
+ipv6: false
+find-process-mode: always
+tcp-concurrent: true
+unified-delay: true
+dns:
+  enable: true
+  ipv6: false
+  enhanced-mode: fake-ip
+  fake-ip-range: 198.18.0.1/16
+  respect-rules: true
+  use-hosts: true
+  prefer-h3: false
+  default-nameserver:
+  - 223.5.5.5
+  - 119.29.29.29
+  nameserver:
+  - https://1.1.1.1/dns-query#🚀 节点选择
+  - https://8.8.8.8/dns-query#🚀 节点选择
+  - https://dns.cloudflare.com/dns-query#🚀 节点选择
+  - https://dns.google/dns-query#🚀 节点选择
+  fallback:
+  - https://1.1.1.1/dns-query#🚀 节点选择
+  - https://8.8.8.8/dns-query#🚀 节点选择
+  - tls://1.1.1.1#🚀 节点选择
+  - tls://8.8.8.8#🚀 节点选择
+  fallback-filter:
+    geoip: true
+    geoip-code: CN
+    geosite:
+    - gfw
+    ipcidr:
+    - 240.0.0.0/4
+  nameserver-policy:
+    +.cn:
+    - https://doh.pub/dns-query
+    - https://dns.alidns.com/dns-query
+    +.你的域名:
+    - https://doh.pub/dns-query
+    - https://dns.alidns.com/dns-query
+    - system
+    geosite:cn:
+    - https://doh.pub/dns-query
+    - https://dns.alidns.com/dns-query
+    geosite:private:
+    - system
+    - 223.5.5.5
+  proxy-server-nameserver:
+  - https://doh.pub/dns-query
+  - https://dns.alidns.com/dns-query
+  - 223.5.5.5
+  fake-ip-filter:
+  - '*.lan'
+  - '*.local'
+  - '*.arpa'
+  - +.local
+  - +.localhost
+  - localhost.ptlogin2.qq.com
+  - +.msftconnecttest.com
+  - www.msftconnecttest.com
+  - +.msftncsi.com
+  - geosite:cn
+  - geosite:private
+  - '*.cn'
+  - +.cn
+  - stun.*.*
+  - stun.*.*.*
+  - time.*.com
+  - time.*.gov
+  - time.*.edu.cn
+  - time.*.apple.com
+  - ntp.*.com
+  - ntp.*.com.cn
+  - +.market.xiaomi.com
+  - +.stun.*.*
+  - +.stun.*.*.*
+tun:
+  enable: true
+  stack: system
+  dns-hijack:
+  - any:53
+  auto-route: true
+  auto-detect-interface: true
+  strict-route: true
+sniffer:
+  enable: true
+  force-dns-mapping: true
+  override-destination: true
+  parse-pure-ip: true
+  sniff:
+    HTTP:
+      ports:
+      - 80
+      - 8080-8880
+    TLS:
+      ports:
+      - 443
+      - 8443
+    QUIC:
+      ports:
+      - 443
+      - 8443
+proxy-providers:
+  vps-sub:
+    type: http
+    url: https://sub.你的域名/把这里换成你的订阅路径
+    interval: 3600
+    path: ./providers/vps-sub.yaml
+    health-check:
+      enable: true
+      url: https://www.gstatic.com/generate_204
+      interval: 300
+proxies: []  # 推荐用上方 proxy-providers；若手写节点可在此填写
+proxy-groups:
+- name: 🚀 节点选择
+  type: select
+  use:
+  - vps-sub
+  proxies:
+  - DIRECT
+- name: 🤖 人工智能
+  type: select
+  use:
+  - vps-sub
+  proxies:
+  - 🚀 节点选择
+  - DIRECT
+- name: ⚡ UDP加速
+  type: select
+  use:
+  - vps-sub
+  proxies:
+  - DIRECT
+- name: 🐟 漏网之鱼
+  type: select
+  use:
+  - vps-sub
+  proxies:
+  - 🚀 节点选择
+  - DIRECT
+rules:
+- DOMAIN,sub.你的域名,DIRECT
+- DOMAIN,panel.你的域名,DIRECT
+- DOMAIN-SUFFIX,你的域名,DIRECT
+- DOMAIN-SUFFIX,doh.pub,DIRECT
+- DOMAIN-SUFFIX,dns.alidns.com,DIRECT
+- DOMAIN-SUFFIX,alidns.com,DIRECT
+- DOMAIN,dns.google,🚀 节点选择
+- DOMAIN-SUFFIX,dns.google,🚀 节点选择
+- IP-CIDR,8.8.8.8/32,🚀 节点选择,no-resolve
+- IP-CIDR,8.8.4.4/32,🚀 节点选择,no-resolve
+- PROCESS-NAME-REGEX,(?i)^(WeChat|WeChatAppEx|WeChatHelper|XPlayer|WeApp|Weixin|微信).*$,DIRECT
+- PROCESS-PATH-REGEX,(?i).*/WeChat\.app/.*$,DIRECT
+- PROCESS-PATH-REGEX,(?i).*xinWeChat.*$,DIRECT
+- PROCESS-PATH-REGEX,(?i).*/WeChatAppEx\.app/.*$,DIRECT
+- PROCESS-NAME,WeChat,DIRECT
+- PROCESS-NAME,WeChatAppEx,DIRECT
+- PROCESS-NAME,WeChatAppEx Helper,DIRECT
+- PROCESS-NAME,WeChatAppEx Helper (Renderer),DIRECT
+- PROCESS-NAME,WeChatAppEx Helper (GPU),DIRECT
+- PROCESS-NAME,WeChatAppEx Helper (Plugin),DIRECT
+- PROCESS-NAME,WeChatHelper,DIRECT
+- PROCESS-NAME,XPlayer,DIRECT
+- PROCESS-NAME,WeApp,DIRECT
+- PROCESS-NAME,微信,DIRECT
+- PROCESS-NAME,Weixin,DIRECT
+- PROCESS-NAME,Weixin.exe,DIRECT
+- PROCESS-NAME,WeChat.exe,DIRECT
+- PROCESS-NAME,WeChatAppEx.exe,DIRECT
+- PROCESS-NAME,com.tencent.xinWeChat,DIRECT
+- PROCESS-NAME,MicroMessenger,DIRECT
+- DOMAIN-SUFFIX,tc.qq.com,DIRECT
+- DOMAIN-SUFFIX,qq.com,DIRECT
+- DOMAIN-SUFFIX,qlogo.cn,DIRECT
+- DOMAIN-SUFFIX,qpic.cn,DIRECT
+- DOMAIN-SUFFIX,servicewechat.com,DIRECT
+- DOMAIN-SUFFIX,weixinbridge.com,DIRECT
+- DOMAIN-SUFFIX,wechat.com,DIRECT
+- DOMAIN-SUFFIX,tenpay.com,DIRECT
+- DOMAIN-SUFFIX,gtimg.cn,DIRECT
+- DOMAIN-SUFFIX,idqqimg.com,DIRECT
+- DOMAIN-SUFFIX,myqcloud.com,DIRECT
+- DOMAIN-KEYWORD,weixin,DIRECT
+- DOMAIN-KEYWORD,wechat,DIRECT
+- AND,((NETWORK,udp),(DST-PORT,3478)),⚡ UDP加速
+- AND,((NETWORK,udp),(DST-PORT,3479)),⚡ UDP加速
+- AND,((NETWORK,udp),(DST-PORT,5349)),⚡ UDP加速
+- AND,((NETWORK,udp),(DST-PORT,19302)),⚡ UDP加速
+- AND,((NETWORK,udp),(DST-PORT,19303)),⚡ UDP加速
+- AND,((NETWORK,udp),(DST-PORT,19304)),⚡ UDP加速
+- AND,((NETWORK,udp),(DST-PORT,19305)),⚡ UDP加速
+- AND,((NETWORK,udp),(DST-PORT,19306)),⚡ UDP加速
+- AND,((NETWORK,udp),(DST-PORT,19307)),⚡ UDP加速
+- AND,((NETWORK,udp),(DST-PORT,19308)),⚡ UDP加速
+- AND,((NETWORK,udp),(DST-PORT,19309)),⚡ UDP加速
+- DOMAIN-SUFFIX,stun.l.google.com,⚡ UDP加速
+- DOMAIN-SUFFIX,stun1.l.google.com,⚡ UDP加速
+- DOMAIN-SUFFIX,stun2.l.google.com,⚡ UDP加速
+- DOMAIN-SUFFIX,stun3.l.google.com,⚡ UDP加速
+- DOMAIN-SUFFIX,stun4.l.google.com,⚡ UDP加速
+- DOMAIN-SUFFIX,stun.cloudflare.com,⚡ UDP加速
+- DOMAIN-SUFFIX,global.stun.twilio.com,⚡ UDP加速
+- DOMAIN-KEYWORD,stun.,⚡ UDP加速
+- AND,((NETWORK,udp),(GEOIP,CN)),DIRECT
+- NETWORK,UDP,⚡ UDP加速
+- DOMAIN-SUFFIX,anthropic.com,🤖 人工智能
+- DOMAIN-SUFFIX,claude.ai,🤖 人工智能
+- DOMAIN-SUFFIX,claude.com,🤖 人工智能
+- DOMAIN-SUFFIX,claudeusercontent.com,🤖 人工智能
+- DOMAIN-SUFFIX,openai.com,🤖 人工智能
+- DOMAIN-SUFFIX,chatgpt.com,🤖 人工智能
+- DOMAIN-SUFFIX,oaistatic.com,🤖 人工智能
+- DOMAIN-SUFFIX,oaiusercontent.com,🤖 人工智能
+- DOMAIN-KEYWORD,openai,🤖 人工智能
+- DOMAIN-SUFFIX,ai.com,🤖 人工智能
+- DOMAIN-SUFFIX,cursor.com,🤖 人工智能
+- DOMAIN-SUFFIX,cursor.sh,🤖 人工智能
+- DOMAIN-SUFFIX,cursorapi.com,🤖 人工智能
+- DOMAIN-SUFFIX,cloudflare.com,🤖 人工智能
+- DOMAIN-SUFFIX,cloudflare.net,🤖 人工智能
+- DOMAIN-SUFFIX,cloudflareinsights.com,🤖 人工智能
+- DOMAIN-SUFFIX,cloudflare-dns.com,🤖 人工智能
+- DOMAIN-SUFFIX,cloudflareclient.com,🤖 人工智能
+- DOMAIN-SUFFIX,cfargotunnel.com,🤖 人工智能
+- DOMAIN-SUFFIX,cf-ns.com,🤖 人工智能
+- DOMAIN-SUFFIX,trycloudflare.com,🤖 人工智能
+- DOMAIN-SUFFIX,workers.dev,🤖 人工智能
+- DOMAIN-SUFFIX,pages.dev,🤖 人工智能
+- DOMAIN-SUFFIX,one.one.one.one,🤖 人工智能
+- DOMAIN-SUFFIX,warp.plus,🤖 人工智能
+- IP-CIDR,1.1.1.1/32,🤖 人工智能,no-resolve
+- IP-CIDR,1.0.0.1/32,🤖 人工智能,no-resolve
+- IP-CIDR6,2606:4700:4700::1111/128,🤖 人工智能,no-resolve
+- IP-CIDR6,2606:4700:4700::1001/128,🤖 人工智能,no-resolve
+- DOMAIN-SUFFIX,gemini.google.com,🤖 人工智能
+- DOMAIN,ai.google.dev,🤖 人工智能
+- DOMAIN,generativelanguage.googleapis.com,🤖 人工智能
+- DOMAIN,makersuite.google.com,🤖 人工智能
+- DOMAIN-SUFFIX,bard.google.com,🤖 人工智能
+- DOMAIN-SUFFIX,deepmind.com,🤖 人工智能
+- DOMAIN-SUFFIX,deepmind.google,🤖 人工智能
+- DOMAIN-SUFFIX,generativeai.google,🤖 人工智能
+- DOMAIN-SUFFIX,x.ai,🤖 人工智能
+- DOMAIN-SUFFIX,grok.com,🤖 人工智能
+- DOMAIN-SUFFIX,perplexity.ai,🤖 人工智能
+- DOMAIN-SUFFIX,pplx.ai,🤖 人工智能
+- DOMAIN,copilot.microsoft.com,🤖 人工智能
+- PROCESS-NAME,Claude,🤖 人工智能
+- PROCESS-NAME,Claude Helper,🤖 人工智能
+- PROCESS-NAME,Claude Helper (GPU),🤖 人工智能
+- PROCESS-NAME,Claude Helper (Plugin),🤖 人工智能
+- PROCESS-NAME,Claude Helper (Renderer),🤖 人工智能
+- PROCESS-NAME,claude,🤖 人工智能
+- PROCESS-NAME,Claude Code,🤖 人工智能
+- PROCESS-NAME,Claude Code Helper,🤖 人工智能
+- GEOIP,CN,DIRECT
+- MATCH,🐟 漏网之鱼
