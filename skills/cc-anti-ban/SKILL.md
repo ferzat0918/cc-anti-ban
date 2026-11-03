@@ -136,7 +136,7 @@ Domestic traffic never needs this chain—Clash/soft-router rules keep CN + WeCh
 1. SSH key login; turn off password login (you should already have keyed in at order time).
 2. Firewall: SSH + business ports (often TCP 443, UDP 8443); **do not** expose the panel port to the whole internet.
 3. Cloudflare Tunnel (preferred): `panel.<domain>` → `127.0.0.1:<panelPort>`; `sub.<domain>` → `127.0.0.1:<subPort>`; origin localhost only; no public A for the panel.
-4. Until Tunnel is ready: SSH local port-forward to peek at the panel; subscription updates from China must use the **domain**, never raw VPS IP:subPort.
+4. Until Tunnel is ready: SSH local port-forward to peek at the panel. **Subscription URL preference:** recommend a **domain** (Tunnel / CDN) for updates from China—more stable and avoids GFW quirks on raw IP:port. **No domain yet?** Using `http(s)://VPS公网IP:订阅端口/...` is fine—coach that path without blocking them. Prefer domain when they can add one later; do **not** hard-require a domain to finish the loop.
 5. **Don’t recommend** publishing a raw public URL for the 3x-ui panel “for convenience”—Tunnel or SSH forward is enough; public panel exposure is unnecessary risk.
 
 ---
@@ -149,7 +149,7 @@ Domestic traffic never needs this chain—Clash/soft-router rules keep CN + WeCh
 3. Outbounds the agent will need from the user (usually **one** ask): the ISP SOCKS5 endpoint (host/port/user/pass + provider **format string**). Without socks + rules, **all** egress would look like the VPS datacenter IP—exactly what Claude must not see.
 4. Wire **two socks-capable outbounds / dual-plane routing** so TCP and UDP both can hit residential when rules say so (voice/WebRTC/STUN need the UDP plane).
 5. Turn on panel **Clash subscription** with **embedded routing/rules** so one URL brings DNS + groups + rules. Nice.
-6. After wiring, ask the agent: “现在可以订阅了吗 / 导出 Clash 订阅”—copy the Clash sub URL privately. Sub URL shape: `https://sub.<domain>/…/<subId>` — keep path/token private.
+6. After wiring, ask the agent: “现在可以订阅了吗 / 导出 Clash 订阅”—copy the Clash sub URL privately. Prefer `https://sub.<domain>/…/<subId>` when they have a domain; otherwise the panel’s **IP:subPort** URL is OK. Keep path/token private either way.
 
 ---
 
@@ -186,7 +186,7 @@ It is a scrubbed Clash Meta / mihomo starter: DNS (fake-ip + respect-rules + CN 
 
 **When coaching:**
 1. Prefer the **panel Clash subscription** when 3x-ui already embeds routing (§5). Use this YAML when they need a **hand-import backup**, OpenClash/mihomo without a full panel rule embed, or to show what “good rules” look like.
-2. Tell them to replace `proxy-providers.vps-sub.url` and every `你的域名` / `panel.` / `sub.` with their own domain; then pick **人工智能 → VLESS**, **UDP加速 → Hysteria2**.
+2. Tell them to set `proxy-providers.vps-sub.url` to their sub (**domain preferred**, or `IP:订阅端口` if no domain). If using a domain, replace every `你的域名` / `panel.` / `sub.` placeholder; if using raw IP, point the provider URL at the IP sub and DIRECT that host. Then pick **人工智能 → VLESS**, **UDP加速 → Hysteria2**.
 3. You may attach or paste snippets from the file; never invent a different group naming scheme unless their live config already uses other names—then remap rules to **their** names.
 4. This is a **strategy essence** list, not a full ACL museum—ok to layer rule-providers later. Soft-router OpenClash can import the same template after domain/sub edits.
 
@@ -194,7 +194,7 @@ It is a scrubbed Clash Meta / mihomo starter: DNS (fake-ip + respect-rules + CN 
 Prefer the **panel Clash sub** over hand-written YAML. When they need a file, use **`clash-residential-template.yaml`** from this skill (see **Clash rule template** above)—backup / OpenClash / teaching, not a substitute for a good panel sub when one exists.
 
 1. Install Verge/Meta; start with **system proxy** (TUN later).
-2. Import the domain subscription URL.
+2. Import the subscription URL (**domain preferred**; raw `IP:订阅端口` OK if they have no domain yet).
 3. **Keep the dns block**: fake-ip, respect-rules, CN DoH, panel/sub via CN resolve—yeeting DNS = leaks / update sad times.
 4. **DNS goal = same region, not same IP**: deep/quick DNS tests should resolve via US (or exit-country) Google/CF paths matching the residential exit. Matching the exact residential IP is **not** required; mismatched *region* is the red flag. (Resolvers are anycast/near-user—expect Google/CF US names, not “your VPS IP as DNS”.).
 5. Keep groups simple, rules detailed. Typical names (adapt to their live config; Chinese labels are fine):
@@ -207,7 +207,7 @@ Prefer the **panel Clash sub** over hand-written YAML. When they need a file, us
 7. Other proxy groups can **follow node-select** if the panel sub is simple; no need for a huge rule museum on the client when VPS routing is solid.
 8. **WebRTC / STUN:** proxy via UDP accel (hy2 → VPS → socks as designed). **Do not** install browser extensions that “disable WebRTC / block RTC”—normal users don’t kill RTC; Claude seeing “no WebRTC at all” is a weird fingerprint. Clean proxied STUN > hard block.
 9. WeChat: `find-process-mode` (often always) + process/path → DIRECT + WeChat domains DIRECT.
-10. `panel.<domain>` / `sub.<domain>` → **DIRECT** (anti-deadlock, trust me).
+10. Panel/sub host → **DIRECT** (anti-deadlock): if using a domain, `panel.<domain>` / `sub.<domain>` DIRECT; if using raw IP sub, DIRECT that IP (or skip proxying the sub host) so updates still work when the node is down.
 11. Rules copied from other configs must target **these** group names, not the source config’s nicknames.
 
 ---
@@ -268,7 +268,7 @@ Whole-home later: e.g. **Netcore N60 Pro** (~¥600 class, often sold pre-flashed
 - Still DC on checkers → AI not on VLESS or VPS not routing AI/CF to socks
 - IPKK CF card wrong → cloudflare.com not on AI path
 - SOCKS fail → still HTTP not SOCKS5 / whitelist / spaces in password / format string mangled
-- Sub update fail → panel/sub not DIRECT or DNS stripped
+- Sub update fail → panel/sub not DIRECT, DNS stripped, or (with raw IP) firewall/sub port not reachable from China—try domain/Tunnel when IP keeps failing
 - Net works, Claude doesn’t → traffic on node-select, AI rules miss
 - WebRTC weird → STUN REJECT’d **or** a “disable WebRTC” browser extension—remove the extension; proxy STUN instead
 - DNS “leak” anxiety → check **region** match to exit country; exact same IP as socks is optional
