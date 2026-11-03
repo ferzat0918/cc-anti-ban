@@ -30,6 +30,16 @@ VLESS 与 hy2 通常**共用**同一套 Xray 规则。除非现网 `config.json`
 
 ---
 
+## 务必结合视频使用 Skill
+
+**只看文字不够。** 一边看油管教程一边让 Agent 按本 Skill 执行：
+
+- 教程视频：https://www.youtube.com/watch?v=0zcKwIWatCE&t=704s
+- 频道：https://www.youtube.com/@parhatFreddy
+- 图文零基础：https://claude-d5bd.pages.grok.bot/
+
+---
+
 ## 安装
 
 需要 [Node.js](https://nodejs.org/) **22.20+**。
