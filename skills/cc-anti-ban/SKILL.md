@@ -4,7 +4,8 @@ description: >-
   Configure or troubleshoot a shared 3x-ui/Xray relay with Clash/Mihomo.
   Use for setting up Claude residential egress, publishing subscriptions
   with automatic or manual ingress, or checking how Claude, ChatGPT,
-  Cloudflare and YouTube are routed for a subscriber.
+  Cloudflare and YouTube are routed for a subscriber. Also use when checking
+  OpenWrt WAN egress rules for relay traffic from the router or LAN.
 ---
 # cc-anti-ban (Claude residential exit)
 
@@ -230,7 +231,7 @@ If the exit differs, check the effective Clash mode and rule, selected node, Xra
 ---
 
 ## Soft router (later only, dessert)
-Verify the active WAN L3 device and the firewall’s output and forward hooks before claiming household-wide direct blocking. Test with an operator-controlled destination. [Home firewall checks](references/infrastructure.md#4-家庭防火墙与-openclash)
+Verify the household WAN firewall separately from the client selector. Both WAN hooks reject direct STUN first. Only router `output` has an exception for the proxy socket GID and an approved destination IPv4/port pair. LAN `forward` proceeds to the address policy. The remaining rules reject IPv6, allow the configured local and Chinese IPv4 ranges and the DHCPv4 client broadcast, and reject other IPv4. REALITY and HY2 dial the VPS origin. The CF transport needs reachability to its edge address. Check the actual WAN L3 device and test both hooks after a reload or redial. [Rule order, port sets, startup modes and acceptance checks](references/infrastructure.md#4-家庭防火墙与-openclash)
 
 For an existing OpenClash installation, stage and validate the updated subscription and overwrite against an isolated listener. Keep the operator’s selected profile and service state during testing. If the deployment already uses a local Xray bridge for REALITY compatibility, preserve its published node name so both filters still match.
 

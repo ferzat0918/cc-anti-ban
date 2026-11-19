@@ -150,6 +150,8 @@ Xray 使用第一条命中的规则。先保留既有专项规则与拦截，再
 ### 软路由（以后再说）
 例如磊科 N60 Pro + 2G + opw OpenWrt + OpenClash/mihomo。同样：策略组简单、规则写细。**不要**为了等软路由耽误开户。
 
+已使用 OpenWrt 时，可按两条 WAN 链分别验收路由器本机和 LAN 设备的流量。手册列出了 STUN、代理进程例外、国内直连与其余流量的判定顺序，以及三个入口对应的地址和端口。[路由器防火墙策略](./skills/cc-anti-ban/references/infrastructure.md#4-家庭防火墙与-openclash)
+
 ---
 
 ## 常见翻车
