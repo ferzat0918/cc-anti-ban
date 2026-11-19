@@ -1,18 +1,8 @@
-# Clash Meta / mihomo 通用模板：Claude 家宽出口分流
-# ------------------------------------------------------------
-# 用法：
-# 1. 把下面 proxy-providers.vps-sub.url 改成你的订阅地址
-#    （优先 https://sub.你的域名/... ；没有域名时可用 http(s)://VPS公网IP:订阅端口/...）
-# 2. 把 rules 里 panel.你的域名 / sub.你的域名 改成你自己的面板与订阅域名
-# 3. 导入本文件后，在策略组里手动选节点：
-#    - 「🤖 人工智能」选 VLESS（TCP/Reality）节点 → 服务器侧再出家宽 SOCKS5
-#    - 「⚡ UDP加速」选 Hysteria2 节点 → WebRTC / STUN 走这里，不要 REJECT
-#    - 「🚀 节点选择」日常境外；国内 / 微信走 DIRECT
-# 4. 面板与订阅域名必须 DIRECT，避免代理挂了更新不了订阅
-# ------------------------------------------------------------
-# 本模板已去掉真实节点 IP / UUID / 密码 / 个人域名；规则是策略精华版，
-# 不是完整 ACL 列表。日常翻墙可自行叠加 rule-providers / 订阅转换。
-# ------------------------------------------------------------
+# Clash Meta / Mihomo 双层分流模板
+# 将 example.net、192.0.2.10 和 vps-sub.url 换成自己的域名、源站 IPv4 和订阅链接。
+# vps-sub 通过 DIRECT 拉取。panel 和 sub 域名的普通访问按规则走默认代理。
+# 订阅节点名称保留 REALITY、Hysteria2 和 Cloudflare 关键词，顺序由订阅提供。
+# 这是精简模板。现网完整规则由 3x-ui Clash 订阅发布。
 
 mixed-port: 7890
 allow-lan: false
@@ -34,15 +24,15 @@ dns:
   - 223.5.5.5
   - 119.29.29.29
   nameserver:
-  - https://1.1.1.1/dns-query#🚀 节点选择
-  - https://8.8.8.8/dns-query#🚀 节点选择
-  - https://dns.cloudflare.com/dns-query#🚀 节点选择
-  - https://dns.google/dns-query#🚀 节点选择
+  - https://1.1.1.1/dns-query#🌐 默认代理
+  - https://8.8.8.8/dns-query#🌐 默认代理
+  - https://dns.cloudflare.com/dns-query#🌐 默认代理
+  - https://dns.google/dns-query#🌐 默认代理
   fallback:
-  - https://1.1.1.1/dns-query#🚀 节点选择
-  - https://8.8.8.8/dns-query#🚀 节点选择
-  - tls://1.1.1.1#🚀 节点选择
-  - tls://8.8.8.8#🚀 节点选择
+  - https://1.1.1.1/dns-query#🌐 默认代理
+  - https://8.8.8.8/dns-query#🌐 默认代理
+  - tls://1.1.1.1#🌐 默认代理
+  - tls://8.8.8.8#🌐 默认代理
   fallback-filter:
     geoip: true
     geoip-code: CN
@@ -54,7 +44,7 @@ dns:
     +.cn:
     - https://doh.pub/dns-query
     - https://dns.alidns.com/dns-query
-    +.你的域名:
+    +.example.net:
     - https://doh.pub/dns-query
     - https://dns.alidns.com/dns-query
     - system
@@ -122,52 +112,92 @@ sniffer:
 proxy-providers:
   vps-sub:
     type: http
-    url: https://sub.你的域名/把这里换成你的订阅路径
+    url: https://sub.example.net/replace-with-your-subscription-path
+    proxy: DIRECT
     interval: 3600
     path: ./providers/vps-sub.yaml
     health-check:
       enable: true
-      url: https://www.gstatic.com/generate_204
+      url: https://www.cloudflare.com/cdn-cgi/trace
       interval: 300
-proxies: []  # 推荐用上方 proxy-providers；若手写节点可在此填写
+proxies: []
 proxy-groups:
-- name: 🚀 节点选择
+- name: ☁️ CDN 线路
   type: select
-  use:
-  - vps-sub
+  use: [vps-sub]
+  filter: '(?i)Cloudflare'
+  empty-fallback: REJECT
+  hidden: true
+- name: 🔁 直连优先
+  type: fallback
+  use: [vps-sub]
+  filter: '(?i)REALITY|Hysteria2|Cloudflare'
+  url: https://www.cloudflare.com/cdn-cgi/trace
+  interval: 180
+  timeout: 8000
+  lazy: true
+  empty-fallback: REJECT
+- name: 🌐 默认代理
+  type: select
   proxies:
+  - ☁️ CDN 线路
+  - 🔁 直连优先
   - DIRECT
 - name: 🤖 人工智能
   type: select
-  use:
-  - vps-sub
   proxies:
-  - 🚀 节点选择
+  - ☁️ CDN 线路
+  - 🔁 直连优先
+  - 🌐 默认代理
   - DIRECT
-- name: ⚡ UDP加速
+- name: 📡 UDP 流量
   type: select
-  use:
-  - vps-sub
   proxies:
+  - ☁️ CDN 线路
+  - 🔁 直连优先
+  - 🌐 默认代理
   - DIRECT
 - name: 🐟 漏网之鱼
   type: select
-  use:
-  - vps-sub
   proxies:
-  - 🚀 节点选择
+  - 🌐 默认代理
+  - ☁️ CDN 线路
+  - 🔁 直连优先
   - DIRECT
+  - REJECT
 rules:
-- DOMAIN,sub.你的域名,DIRECT
-- DOMAIN,panel.你的域名,DIRECT
-- DOMAIN-SUFFIX,你的域名,DIRECT
+- IP-CIDR,192.0.2.10/32,DIRECT,no-resolve
+- DOMAIN,sub.example.net,🌐 默认代理
+- DOMAIN,panel.example.net,🌐 默认代理
+- DOMAIN-SUFFIX,example.net,DIRECT
 - DOMAIN-SUFFIX,doh.pub,DIRECT
 - DOMAIN-SUFFIX,dns.alidns.com,DIRECT
 - DOMAIN-SUFFIX,alidns.com,DIRECT
-- DOMAIN,dns.google,🚀 节点选择
-- DOMAIN-SUFFIX,dns.google,🚀 节点选择
-- IP-CIDR,8.8.8.8/32,🚀 节点选择,no-resolve
-- IP-CIDR,8.8.4.4/32,🚀 节点选择,no-resolve
+- DOMAIN,dns.google,🌐 默认代理
+- DOMAIN-SUFFIX,dns.google,🌐 默认代理
+- IP-CIDR,8.8.8.8/32,🌐 默认代理,no-resolve
+- IP-CIDR,8.8.4.4/32,🌐 默认代理,no-resolve
+- DOMAIN-SUFFIX,anthropic.com,🤖 人工智能
+- DOMAIN-SUFFIX,claude.ai,🤖 人工智能
+- DOMAIN-SUFFIX,claude.com,🤖 人工智能
+- DOMAIN-SUFFIX,clau.de,🤖 人工智能
+- DOMAIN-SUFFIX,claudemcpclient.com,🤖 人工智能
+- DOMAIN-SUFFIX,claudemcpcontent.com,🤖 人工智能
+- DOMAIN-SUFFIX,claudeusercontent.com,🤖 人工智能
+- DOMAIN,servd-anthropic-website.b-cdn.net,🤖 人工智能
+- DOMAIN,anthropic.com.cdn.cloudflare.net,🤖 人工智能
+- DOMAIN,anthropic.auth0.com,🤖 人工智能
+- DOMAIN,storage.googleapis.com,🤖 人工智能
+- DOMAIN,fonts.googleapis.com,🤖 人工智能
+- DOMAIN,fonts.gstatic.com,🤖 人工智能
+- DOMAIN,claude.app,🤖 人工智能
+- DOMAIN-SUFFIX,livepreview.claude.app,🤖 人工智能
+- GEOSITE,anthropic,🤖 人工智能
+- GEOSITE,category-ntp,🤖 人工智能
+- AND,((NETWORK,udp),(DST-PORT,123)),🤖 人工智能
+- IP-CIDR,160.79.104.0/21,🤖 人工智能,no-resolve
+- IP-CIDR6,2607:6bc0::/32,🤖 人工智能,no-resolve
+- IP-ASN,399358,🤖 人工智能,no-resolve
 - PROCESS-NAME-REGEX,(?i)^(WeChat|WeChatAppEx|WeChatHelper|XPlayer|WeApp|Weixin|微信).*$,DIRECT
 - PROCESS-PATH-REGEX,(?i).*/WeChat\.app/.*$,DIRECT
 - PROCESS-PATH-REGEX,(?i).*xinWeChat.*$,DIRECT
@@ -201,31 +231,24 @@ rules:
 - DOMAIN-SUFFIX,myqcloud.com,DIRECT
 - DOMAIN-KEYWORD,weixin,DIRECT
 - DOMAIN-KEYWORD,wechat,DIRECT
-- AND,((NETWORK,udp),(DST-PORT,3478)),⚡ UDP加速
-- AND,((NETWORK,udp),(DST-PORT,3479)),⚡ UDP加速
-- AND,((NETWORK,udp),(DST-PORT,5349)),⚡ UDP加速
-- AND,((NETWORK,udp),(DST-PORT,19302)),⚡ UDP加速
-- AND,((NETWORK,udp),(DST-PORT,19303)),⚡ UDP加速
-- AND,((NETWORK,udp),(DST-PORT,19304)),⚡ UDP加速
-- AND,((NETWORK,udp),(DST-PORT,19305)),⚡ UDP加速
-- AND,((NETWORK,udp),(DST-PORT,19306)),⚡ UDP加速
-- AND,((NETWORK,udp),(DST-PORT,19307)),⚡ UDP加速
-- AND,((NETWORK,udp),(DST-PORT,19308)),⚡ UDP加速
-- AND,((NETWORK,udp),(DST-PORT,19309)),⚡ UDP加速
-- DOMAIN-SUFFIX,stun.l.google.com,⚡ UDP加速
-- DOMAIN-SUFFIX,stun1.l.google.com,⚡ UDP加速
-- DOMAIN-SUFFIX,stun2.l.google.com,⚡ UDP加速
-- DOMAIN-SUFFIX,stun3.l.google.com,⚡ UDP加速
-- DOMAIN-SUFFIX,stun4.l.google.com,⚡ UDP加速
-- DOMAIN-SUFFIX,stun.cloudflare.com,⚡ UDP加速
-- DOMAIN-SUFFIX,global.stun.twilio.com,⚡ UDP加速
-- DOMAIN-KEYWORD,stun.,⚡ UDP加速
 - AND,((NETWORK,udp),(GEOIP,CN)),DIRECT
-- NETWORK,UDP,⚡ UDP加速
-- DOMAIN-SUFFIX,anthropic.com,🤖 人工智能
-- DOMAIN-SUFFIX,claude.ai,🤖 人工智能
-- DOMAIN-SUFFIX,claude.com,🤖 人工智能
-- DOMAIN-SUFFIX,claudeusercontent.com,🤖 人工智能
+- AND,((NETWORK,udp),(DST-PORT,3478)),📡 UDP 流量
+- AND,((NETWORK,udp),(DST-PORT,3479)),📡 UDP 流量
+- AND,((NETWORK,udp),(DST-PORT,5349)),📡 UDP 流量
+- AND,((NETWORK,udp),(DST-PORT,19302)),📡 UDP 流量
+- AND,((NETWORK,udp),(DST-PORT,19303)),📡 UDP 流量
+- AND,((NETWORK,udp),(DST-PORT,19304)),📡 UDP 流量
+- AND,((NETWORK,udp),(DST-PORT,19305)),📡 UDP 流量
+- AND,((NETWORK,udp),(DST-PORT,19306)),📡 UDP 流量
+- AND,((NETWORK,udp),(DST-PORT,19307)),📡 UDP 流量
+- AND,((NETWORK,udp),(DST-PORT,19308)),📡 UDP 流量
+- AND,((NETWORK,udp),(DST-PORT,19309)),📡 UDP 流量
+- DOMAIN-SUFFIX,stun.l.google.com,📡 UDP 流量
+- DOMAIN-SUFFIX,stun1.l.google.com,📡 UDP 流量
+- DOMAIN-SUFFIX,stun2.l.google.com,📡 UDP 流量
+- DOMAIN-SUFFIX,stun3.l.google.com,📡 UDP 流量
+- DOMAIN-SUFFIX,stun4.l.google.com,📡 UDP 流量
+- DOMAIN-SUFFIX,stun.cloudflare.com,📡 UDP 流量
 - DOMAIN-SUFFIX,openai.com,🤖 人工智能
 - DOMAIN-SUFFIX,chatgpt.com,🤖 人工智能
 - DOMAIN-SUFFIX,oaistatic.com,🤖 人工智能
@@ -247,10 +270,6 @@ rules:
 - DOMAIN-SUFFIX,pages.dev,🤖 人工智能
 - DOMAIN-SUFFIX,one.one.one.one,🤖 人工智能
 - DOMAIN-SUFFIX,warp.plus,🤖 人工智能
-- IP-CIDR,1.1.1.1/32,🤖 人工智能,no-resolve
-- IP-CIDR,1.0.0.1/32,🤖 人工智能,no-resolve
-- IP-CIDR6,2606:4700:4700::1111/128,🤖 人工智能,no-resolve
-- IP-CIDR6,2606:4700:4700::1001/128,🤖 人工智能,no-resolve
 - DOMAIN-SUFFIX,gemini.google.com,🤖 人工智能
 - DOMAIN,ai.google.dev,🤖 人工智能
 - DOMAIN,generativelanguage.googleapis.com,🤖 人工智能
@@ -272,5 +291,23 @@ rules:
 - PROCESS-NAME,claude,🤖 人工智能
 - PROCESS-NAME,Claude Code,🤖 人工智能
 - PROCESS-NAME,Claude Code Helper,🤖 人工智能
+- DOMAIN-SUFFIX,global.stun.twilio.com,📡 UDP 流量
+- DOMAIN-KEYWORD,stun.,📡 UDP 流量
+- IP-CIDR,43.128.0.0/12,DIRECT,no-resolve
+- IP-CIDR,49.51.0.0/16,DIRECT,no-resolve
+- IP-CIDR,101.32.0.0/16,DIRECT,no-resolve
+- IP-CIDR,101.33.0.0/16,DIRECT,no-resolve
+- IP-CIDR,119.28.0.0/16,DIRECT,no-resolve
+- IP-CIDR,150.109.0.0/16,DIRECT,no-resolve
+- NETWORK,UDP,📡 UDP 流量
+- DOMAIN-SUFFIX,google.com,🌐 默认代理
+- DOMAIN-SUFFIX,googleapis.com,🌐 默认代理
+- DOMAIN-SUFFIX,gstatic.com,🌐 默认代理
+- DOMAIN-SUFFIX,googleusercontent.com,🌐 默认代理
+- DOMAIN-SUFFIX,recaptcha.net,🌐 默认代理
+- DOMAIN-SUFFIX,youtube.com,🌐 默认代理
+- DOMAIN-SUFFIX,youtu.be,🌐 默认代理
+- DOMAIN-SUFFIX,googlevideo.com,🌐 默认代理
+- DOMAIN-SUFFIX,ytimg.com,🌐 默认代理
 - GEOIP,CN,DIRECT
 - MATCH,🐟 漏网之鱼
