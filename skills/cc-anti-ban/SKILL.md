@@ -1,10 +1,10 @@
 ---
 name: cc-anti-ban
 description: >-
-  Configure or troubleshoot a 3x-ui/Xray VPS relay with Clash/Mihomo groups
-  and account-scoped residential SOCKS5 routing. Use when syncing the panel
-  subscription, checking routing or egress, or guiding the Claude
-  residential-exit setup covered by this skill.
+  Configure or troubleshoot a shared 3x-ui/Xray relay with Clash/Mihomo.
+  Use for setting up Claude residential egress, publishing subscriptions
+  with automatic or manual ingress, or checking how Claude, ChatGPT,
+  Cloudflare and YouTube are routed for a subscriber.
 ---
 # cc-anti-ban (Claude residential exit)
 
@@ -83,17 +83,18 @@ Whenever the user asks how to **联系作者**, **拼团**, join a group buy, ti
 
 **拼团 nuance (coach clearly):**
 - **Relay VPS (搬瓦工等)** can be shared among friends—traffic is large; more people = cheaper midhop. Author may organize group buys / help deploy the shared VPS if asked via `F3rzat`.
-- **ISP / static residential SOCKS5 must stay single-user**—do **not** share the home IP. If the author helps wire a shared VPS, the user still brings **their own** IPRoyal (or equivalent) so only they exit Claude via that IP; YouTube/Google can share the VPS direct path.
+- **ISP / static residential SOCKS5 must stay single-user**—do **not** share the home IP. If the author helps wire a shared VPS, the user still brings **their own** IPRoyal (or equivalent) so their AI traffic uses their own exit. YouTube playback can share the VPS exit. Sign-in traffic follows the individual account.
 
 
 ---
 
-This setup has two routing layers. Clash selects an inbound path to the VPS. Xray then selects an outbound for that connection by account, inbound, destination and protocol. Use the running subscription and Xray routing as the source of truth for an existing installation. Use the public examples below when building from scratch.
+## How the client and VPS route a request
 
-- **Clash client:** AI dependencies go to `🤖 人工智能`, STUN and other matching UDP flows go to `📡 UDP 流量`, and ordinary overseas domains go to `🌐 默认代理`. WeChat and domestic traffic have separate rules.
-- **VPS relay:** Publish VLESS REALITY, Hysteria2 and Cloudflare Tunnel VLESS WebSocket as applicable to the account. Xray sends traffic that matches the account’s residential policy through its SOCKS5 outbound. Ordinary traffic that reaches the VPS direct fallback uses the VPS datacenter exit.
+Clash makes the first decision on the client. In rule mode, a request can go directly from the client, enter the VPS through one of three transports, or be rejected. `AI 服务` has one choice, `入站协议`. Its automatic and manual choices all lead to the same VPS. The word `直连` in the REALITY node name describes the connection **to the VPS**.
 
-Keep real addresses, credentials and subscription tokens in private configuration. Public walkthrough: [Claude 家宽出口教程（零基础）](https://claude-d5bd.pages.grok.bot/). The walkthrough also covers general setup, with the current inbound and group names recorded in §§2 and 5.
+Xray makes the second decision on the VPS. Authenticated traffic defaults to that subscriber’s residential outbound. YouTube playback and dedicated APIs have a scoped VPS-direct exception. Sign-in keeps the account exit. Business-inbound traffic without a matching identity ends at `blocked`. Check the published profile and the running Xray rules when adapting this reference to another installation.
+
+Keep deployment addresses, credentials and subscription tokens in private configuration. [Beginner walkthrough](https://claude-d5bd.pages.grok.bot/)
 
 ## 0. Buy list (shopping spree, but smart)
 - US-near **relay VPS**: **default recommend [BandwagonHost / 搬瓦工 · Los Angeles USCA_9](https://bandwagonhost.com/order/ecommerce/Los%20Angeles/USCA_9)** ([homepage](https://bandwagonhost.com/)). Prefer CN2 GIA (or peer) near the ISP city; AlmaLinux 9 / Debian; ≥1G RAM; SSH key only. When coaching a zero-base build, steer the user to that LA USCA_9 order link first unless they already have a VPS or insist on another vendor. **Proximity rule:** VPS region ≈ ISP city/state (both US)—closer = lower midhop latency and smoother feel.
@@ -116,22 +117,22 @@ Keep real addresses, credentials and subscription tokens in private configuratio
 ## 1. VPS harden + Tunnel
 
 1. Confirm SSH key access before changing login or firewall settings.
-2. Allow the service ports used by the active inbounds. The reference setup publishes REALITY on TCP 443 and Hysteria2 on UDP 8443. The Cloudflare Tunnel WebSocket upstream listens on loopback.
+2. Allow the service ports used by the active inbounds. The reference uses TCP 443 for REALITY and UDP 8443 for Hysteria2. For port hopping, publish UDP 8443–8447 and forward that range to the listening port. The Cloudflare Tunnel WebSocket upstream listens on loopback.
 3. Keep 3x-ui management behind Cloudflare Tunnel or SSH local forwarding. In the reference layout the panel and subscription use separate domains. The subscription host also carries the WebSocket route through Nginx.
 4. Prefer a domain for subscription updates. On a setup using a raw IP, keep the subscription endpoint reachable before selecting a proxy that depends on it. Keep subscription paths private.
 
-## 2. Configure 3x-ui inbounds and publish the Clash subscription
 
-| Path | Reference transport | Listener |
-| --- | --- | --- |
-| `01 REALITY 直连` | VLESS + REALITY | VPS TCP 443 |
-| `02 Hysteria2 备用` | Hysteria2 in 3x-ui | VPS UDP 8443 |
-| `☁️ Cloudflare Tunnel` | VLESS WebSocket + TLS behind Cloudflare Tunnel and Nginx | Public HTTPS 443, Xray loopback upstream |
+## 2. Bind the three inbounds and publish a complete Clash subscription
 
-1. For a new setup, use the official 3x-ui distribution and keep panel credentials private.
-2. Share a client `subId` across the inbounds intended for the same subscription. Existing subscriptions can expose a subset. Check the generated node list, the Xray inbound tags and each inbound’s user labels before migrating a route between inbounds.
-3. Enable 3x-ui’s Clash subscription and embedded routing to distribute nodes, DNS, rules and groups together. Read the subscription over the intended hostname and keep its URL private.
-4. Check that the published node names match the strategy group filters in §5. The current filters use `REALITY`, `Hysteria2` and `Cloudflare` in the names.
+| Published node name, in priority order | Transport |
+| --- | --- |
+| `01 REALITY 直连` | VLESS + Vision + REALITY over TCP |
+| `02 Hysteria2 备用` | Hysteria2 over UDP |
+| `☁️ Cloudflare Tunnel` | VLESS WebSocket over TLS via Cloudflare Tunnel and the origin web server |
+
+Bind **each subscriber to all three inbounds**, including subscribers added later. Reuse that subscriber’s own `subId` across the three bindings. Keep credentials distinct between people. Check the VLESS identity and Vision flow for REALITY, the Hysteria2 authentication value, and the WebSocket identity. The account label seen by Xray must match its `user` routes on every inbound.
+
+Enable the panel’s Clash subscription and embedded routing. Put shared DNS, groups and rules in the subscription template (`subClashRules` in the reference panel). Let the panel render each account’s own nodes. Set inbound publication order to match the table. Both selectors filter the **exact published names**, so a rename must be reflected in both filters. Compare the full YAML downloaded from each account’s normal subscription URL with the intended groups, rule order and node list.
 
 ## 3. Buy ISP SOCKS5 (IPRoyal detail)
 1. Product: **ISP** (static), **not** rotating Residential (Residential = rotating, metered, shared pool—wrong tool). US city/state near the relay (video demo often picks a nearby US state such as NY when VPS is US)—prefer **Zero Fraud Score**; start with 1 IP.
@@ -147,42 +148,43 @@ Keep real addresses, credentials and subscription tokens in private configuratio
 
 ---
 
-## 4. Wire SOCKS5 into Xray
 
-Use the SOCKS5 credentials for the selected account to configure a dedicated outbound. Check TCP and UDP through the paths the account actually uses. Some accounts use a separate UDP outbound. The live policy can apply to all three inbounds for one account and only the WebSocket inbound for another.
+## 4. Route each subscriber on the VPS
 
-Inspect 3x-ui’s saved Xray template and the generated `config.json`. Evaluate rules in order and check `user`, `inboundTag`, destination and network together. The reference configuration uses `IPIfNonMatch` and places these rules in this order:
+Give each authenticated account its own residential SOCKS5 outbound. For an account with distinct TCP and UDP paths, bind both explicitly and test both. Every account rule covers the REALITY, HY2 and WebSocket inbound tags. Preserve other inbounds and the panel’s management route.
 
-1. A scoped Google sign-in exception sends `www.gstatic.com` and `ssl.gstatic.com` on port 443 to Xray `direct`. It inherits the account and inbound scope of the following `geosite:cn` reject rule.
-2. The scoped domain and IP rejects can run before that account’s SOCKS5 rules. Check the exact hostname against the server’s current GeoSite asset.
-3. Account-scoped rules send selected AI, Cloudflare, Telegram, TikTok and UDP traffic to the relevant SOCKS5 outbound. For STUN and NTP, check the actual UDP rule and outbound for that account. The reference port list includes 123, 3478, 3479, 5349 and 19302–19309.
-4. Remaining inbound traffic encounters the common private/CN IP and BitTorrent guards before the `direct` fallback. Ordinary overseas traffic can leave via the VPS.
+The reference uses `IPIfNonMatch` and first-match routing. Check the panel’s saved Xray template and generated runtime configuration in this order.
 
-Before updating a server rule, verify that it matches the intended account and inbound, validate the edited Xray configuration, and test the affected traffic on the enabled transports. When Google sign-in behaves differently between nodes, compare the application request with a direct test from the VPS. The reference rule still rejects `fonts.googleapis.com`, `fonts.gstatic.com` and `www.recaptcha.net` for the affected account. Check which request fails in the relevant sign-in step before widening an exception.
+1. Keep existing scoped exceptions and guards in their applicable order. For the account with the Google static-resource exception, `full:www.gstatic.com` and `full:ssl.gstatic.com` on port 443 go to **that account’s residential outbound** before its China-domain guard. Preserve the private/CN, BitTorrent and ad blocks and the specific AI, Cloudflare, messaging and UDP routes. The reference includes NTP on UDP 123 and STUN ports 3478, 3479, 5349 and 19302–19309.
+2. Send the exact host `full:accounts.youtube.com` to the subscriber’s residential path **before** the broader YouTube rule. Respect a separate TCP/UDP outbound on this exception too.
+3. Allow the configured accounts to use VPS `direct` for YouTube’s dedicated domains, media and APIs, including `googlevideo.com`, `ytimg.com`, `yt3.ggpht.com` and `youtubei.googleapis.com`. Use the dedicated hostname list. A broad `geosite:youtube` rule can include shared `ggpht.com` infrastructure. Google sign-in, OAuth, Gmail, shared avatar hosts and the general Google APIs keep their account policies.
+4. Place residential defaults for each authenticated account after the exceptions. Finish with `blocked` scoped to the three business inbounds for an unmatched identity.
 
-## 5. Clash subscription, DNS and strategy groups
+The [Xray routing tail](references/xray-routing-tail.json) supplies steps 2–4 with two fictional subscribers, including one with separate UDP egress. Replace the sample users, inbound tags and outbound tags with matching private configuration. Insert its `rules` after the more-specific policies and applicable guards, in place of any old catch-all for these inbounds. Check for an earlier unconditional direct rule that would shadow the tail. Validate the complete Xray config before publishing and compare the resulting running routes.
 
-Prefer the complete 3x-ui subscription. Use [`clash-residential-template.yaml`](./clash-residential-template.yaml) as a compact provider-based backup. Replace the example domains, relay origin IP and subscription URL with the deployment’s private values.
+## 5. Configure the client selectors and rule order
 
-| Group | Type | Members or choices |
-| --- | --- | --- |
-| `☁️ CDN 线路` | Hidden `select` | Nodes with `Cloudflare` in their name |
-| `🔁 直连优先` | `fallback` | REALITY, Hysteria2 and Cloudflare in subscription order |
-| `🌐 默认代理` | `select` | CDN, fallback, DIRECT |
-| `🤖 人工智能` | `select` | CDN, fallback, default proxy, DIRECT |
-| `📡 UDP 流量` | `select` | CDN, fallback, default proxy, DIRECT |
-| `🐟 漏网之鱼` | `select` | Default proxy, CDN, fallback, DIRECT, REJECT |
+The single-VPS profile uses 28 groups from the Aethersailor standard layout adapted for three transports. There are no country selectors. Run in rule mode for application policies to apply.
 
-In the reference subscription, `🔁 直连优先` tries `01 REALITY 直连`, `02 Hysteria2 备用`, then `☁️ Cloudflare Tunnel` according to health. The group contains only relay nodes. Clash `DIRECT` is a separate selector option that uses the client network. Xray `direct` uses the VPS network.
+| Group | Behavior |
+| --- | --- |
+| `入站协议` | Manual selector. Its first option is `自动切换`, followed by REALITY, HY2 and Cloudflare Tunnel. A manual choice pins that transport until the user selects automatic again. An existing profile can remember a choice from before an update. |
+| `自动切换` | Mihomo `fallback`. Use the first healthy node in published order, REALITY → HY2 → CF. Check all three every 15 seconds with a 5-second timeout, expected HTTP 204 and `lazy: false`. |
+| `AI 服务` | Its only member is `入站协议`. Claude, ChatGPT and the configured Cloudflare destinations follow the same proxy-only path. |
+| Application groups and `🎯 全球直连` | Keep each service’s published choices. For example, `📹 YouTube` uses the ingress and `🎯 全球直连` uses client `DIRECT`. YouTube’s VPS-direct playback decision takes place on Xray. |
+| `🐟 漏网之鱼` and `🔀 非标端口` | The catch-all defaults to the ingress and also offers global direct and reject. Nonstandard ports default to the catch-all. |
 
-Keep `mode: rule` for split routing. Global mode sends traffic through the chosen `GLOBAL` member. Validate the effective mode and selected group alongside the rules. Only an explicitly chosen and tested path should be reported as using the account’s SOCKS5 exit.
+Use `https://cp.cloudflare.com/generate_204` for the health check. The client sends `HEAD` and expects 204. A recovered higher-priority node handles **new** automatic connections. Existing connections need their application to reconnect. If every probe fails, Mihomo may still display or try the first node. With all three transports down, new AI connections fail. Both selectors set `empty-fallback: REJECT` for an empty node list. A successful probe measures the path to the probe host; an individual service can still be unavailable.
 
-Use the current subscription's rule order:
+**Two ways to distribute the same policy**
 
-1. Route the relay origin IP directly. The explicit panel and subscription host rules use `🌐 默认代理` before the broader relay-domain `DIRECT` rule. The standalone template fetches its provider through `DIRECT` for bootstrap.
-2. Preserve DNS with Fake-IP and `respect-rules`. Domestic DoH handles domestic and relay names and proxy-server resolution. Selected foreign DoH/DoT resolvers follow `🌐 默认代理`.
-3. Preserve early AI and WeChat process rules. The domestic UDP check precedes the STUN port rules. STUN-specific rules and the AI/Cloudflare exceptions precede the general UDP fallback.
-4. Broader Google/YouTube rules use `🌐 默认代理` after the specific AI dependencies. Domestic GEOIP and the final `MATCH` route to `DIRECT` and `🐟 漏网之鱼`, respectively.
+- For a full panel subscription, use `include-all-proxies: true` in the two ingress groups and the same anchored name filter in both. The parent also has `proxies: [自动切换]`. Keep the backend nodes, their order and their credentials specific to each subscriber.
+- The [standalone Mihomo template](clash-residential-template.yaml) reads nodes from `vps-sub`. Replace the reserved domain, origin IPv4 and provider URL. Both selectors use `use: [vps-sub]`. The provider also checks for HTTP 204 every 15 seconds with a 5-second timeout. Keep its parameters aligned with the fallback group. Its `proxy: DIRECT` bootstraps node downloads. Ordinary traffic to the panel and subscription hosts follows the explicit ingress rules.
+- When building a panel template from the standalone file, remove `proxy-providers` and `proxies`, and replace `use: [vps-sub]` in those two groups with `include-all-proxies: true`. Preserve the parent’s named automatic option. For an existing 3x-ui service, retain its DNS settings and reviewed deployment-specific rules. Clients receive just the nodes through a node provider. Import the **full** configuration to receive the shared rules as well.
+
+The standalone example contains 1,571 portable rules. It includes all 128 AI rules in the reference subscription, which had 8,154 rules including local overrides on 2026-11-19. Maintain the union of the standard AI categories, Claude’s official network and desktop dependencies, CleanIP and Net.Coffee, including Persona verification. Retain the existing Cloudflare catalog and reviewed overrides. Match `withpersona.com` and `frompersona.com` by suffix. Keep shared hosting dependencies at their reviewed hostname or anchored pattern. [Standard template](https://github.com/Aethersailor/Custom_OpenClash_Rules/blob/8335eb2b8205ca2e3573cd7267d5b1e423637084/cfg/Custom_Clash.ini) · [Claude network requirements](https://code.claude.com/docs/en/network-config#network-access-requirements) · [Desktop requirements](https://code.claude.com/docs/en/desktop#network-access-requirements) · [CleanIP](https://cleanip.io/claude/site) · [Net.Coffee](https://ip.net.coffee/claude/site.html)
+
+Preserve the early `hcaptcha` keyword, relay/DNS bootstrap and AI rules ahead of broad direct or service catalogs. Keep fake-IP, `respect-rules` and independent DNS for proxy hostnames. Handle LAN and WeChat, then application groups and the applicable STUN exceptions. Keep domestic classification and service matches ahead of the general UDP ingress rule. Finish with nonstandard-port handling and `MATCH,🐟 漏网之鱼`. On OpenClash, check that local overwrites recognize the subscription-owned groups and preserve their membership.
 
 ## 6. Verify (gate before signup—no skipping homework)
 Order matters; any fail → stop.
@@ -191,7 +193,12 @@ Order matters; any fail → stop.
 
 **A. VPS socks** — residential IP ≠ VPS IP; else whitelist / creds / outbound.
 
-**B. Clash** — confirm the expected nodes and strategy groups, then verify the actual rule, selected node and Xray outbound. Check UDP with a UDP test on its selected path.
+**B. Clash and ingress failover**
+
+1. Fetch each subscriber’s complete profile using their own private subscription URL and run the target Mihomo core’s native config check. On a fresh import, verify the four choices in `入站协议` and the proxy-only chain from `AI 服务`. The account should have its own authenticated nodes in priority order.
+2. On a loopback-only test instance with TUN off, send a new HTTPS request in automatic mode and through each manual choice. Check the actual connection chain. Use `GET /cdn-cgi/trace` on `www.cloudflare.com` to observe that account’s Cloudflare egress. This endpoint can return 404 to `HEAD` even when its `GET` works.
+3. Disconnect only the test instance’s REALITY path, then HY2. Watch the group’s own health results for the configured URL and make new requests through HY2 and CF. Stop all three and verify that a new AI request fails. Restore the paths and verify REALITY regains priority. While manually pinned to CF, restoring REALITY should leave new requests on CF until automatic is selected again. Let the normal 15-second timer run and record the actual failover times.
+4. Test UDP on the account’s chosen UDP path. Check the subscriber label, inbound and Xray outbound for a playback hostname, `accounts.youtube.com`, an ordinary overseas destination and an unknown identity. Cloudflare’s IP echo only verifies its own route.
 
 **C. Three sites** (same browser, AI path on):
 - https://ip.net.coffee/claude/
@@ -205,7 +212,7 @@ If the exit differs, check the effective Clash mode and rule, selected node, Xra
 
 **D. Contrast** — Baidu/CN domestic; WeChat image ok.
 
-**E. Application check** — verify the intended Google sign-in step, its static and challenge requests, and the action after pressing Next if that step is in scope. A successful page GET verifies the entry point. Record whether submission and the following screen were observed. Use a separate UDP test for STUN.
+**E. Application check** — if login is in scope, check the sign-in host, the applicable static resources and the action after pressing Next. A successful page GET verifies the entry point. Record which step was actually observed.
 
 **Pass bar:** socks home IP + three sites agree (Claude+CF unified residential) + CN/WeChat DIRECT → step 7. You got this.
 
@@ -221,6 +228,8 @@ If the exit differs, check the effective Clash mode and rule, selected node, Xra
 ---
 
 ## Soft router (later only, dessert)
+For an existing OpenClash installation, stage and validate the updated subscription and overwrite against an isolated listener. Keep the operator’s selected profile and service state during testing. If the deployment already uses a local Xray bridge for REALITY compatibility, preserve its published node name so both filters still match.
+
 Whole-home later: e.g. **Netcore N60 Pro** (~¥600 class, often sold pre-flashed) or DIY **磊科** + opw OpenWrt + OpenClash/mihomo. Same simple groups, detailed rules. Soft router keeps the panel **24/7**—no “forgot Clash after reboot” and fewer mysterious client-side IP leaks when the toggle looked on. Do **not** block signup waiting for a soft router or ancient dialer-proxy chains. Soft router is optional stability candy after the PC Clash loop works—not a prerequisite for the seven steps. If they ask “推荐个软路由”, you may name N60 Pro / 磊科 DIY; still finish §0–§7 on PC first.
 
 ---
@@ -241,12 +250,15 @@ Whole-home later: e.g. **Netcore N60 Pro** (~¥600 class, often sold pre-flashed
 - IPKK CF card wrong → cloudflare.com not on AI path
 - SOCKS fail → still HTTP not SOCKS5 / whitelist / spaces in password / format string mangled
 - Subscription update fails → check the endpoint hostname, DNS, updater’s fetch route and origin reachability before switching nodes
-- General traffic works but AI fails → check Rule/Global mode, the AI selector and the account’s Xray route
+- General traffic works but AI fails → check rule mode, `AI 服务 → 入站协议`, the selected transport and the account’s Xray outbound. A green health probe covers the probe host.
+- Only REALITY fails → pin it and check TCP reachability, that subscriber’s VLESS identity and Vision flow, the server name, public key, short ID and the minimum client version. On OpenClash with a local Xray bridge, check the loopback listener and the Xray handshake log.
+- A new subscriber sees only CF → inspect the three inbound bindings and the rendered node list for the same account-specific `subId`.
+- Automatic appears stuck on REALITY → check whether the parent is pinned, all three node names and the per-node status for the 204 URL. A trace endpoint that answers HEAD with 404 can make every path appear down.
 - WebRTC failure → check the STUN rule, selected transport and account’s UDP outbound
 - DNS “leak” anxiety → check **region** match to exit country; exact same IP as socks is optional
 - Opened claude.ai before three-site pass → stop, fix path, expect higher risk; don’t “just try once”
 - WeChat images fail → process match, not domain-only
 - Pay risk → switched node, day-1 Pro, brand-new mail→instant pay, card farm / shared merchant card, billing≠IP country
 - “Why not just buy a VPN?” → almost all are datacenter IPs; Claude/CF still see hosting
-- Residential alone feels slow → expected (tiny bandwidth / high latency); that’s why normal overseas exits **VPS direct**
+- YouTube playback and Google sign-in show different exits → check the dedicated media/API list and the earlier `accounts.youtube.com` exception. Other overseas traffic that reaches the relay defaults to the authenticated account’s residential exit.
 - 拼团 / 联系作者 → WeChat `F3rzat` (VPS can share; ISP cannot)
