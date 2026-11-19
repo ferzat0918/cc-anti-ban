@@ -73,7 +73,9 @@ cc-anti-ban/
 └── skills/cc-anti-ban/
     ├── SKILL.md                           # 给 Agent 的配置与验收步骤
     ├── clash-residential-template.yaml    # 从节点订阅读取三条入口的客户端配置
-    └── references/xray-routing-tail.json  # VPS 端路由末段示例
+    └── references/
+        ├── infrastructure.md             # 从新 VPS 部署、开账号、验证防火墙和恢复
+        └── xray-routing-tail.json        # VPS 端路由末段示例
 ```
 
 [Skill 正文（英文）](./skills/cc-anti-ban/SKILL.md) · [Mihomo 模板](./skills/cc-anti-ban/clash-residential-template.yaml) · [Xray 路由示例](./skills/cc-anti-ban/references/xray-routing-tail.json)
@@ -81,6 +83,8 @@ cc-anti-ban/
 ---
 
 ## Skill 会带你走完什么
+
+从新 VPS 搭建或迁移时，可依次核对域名与证书、三个入口、面板订阅开关、家庭和 VPS 两侧的防火墙，以及备份恢复。[基建部署与运维手册](./skills/cc-anti-ban/references/infrastructure.md)
 
 ### 0. 购物清单
 - 靠近美国、线路优先 CN2 GIA（或同类）的**中转 VPS**；城市靠近家宽 ISP；AlmaLinux 9 / Debian；内存 ≥1G；只用 SSH 密钥。
@@ -96,7 +100,7 @@ cc-anti-ban/
 
 给每个订阅账号都绑定 REALITY、Hysteria2 和 Cloudflare Tunnel，后续新增账号也按这三条建立。一个人的三条记录使用自己的同一个 `subId`，并用该账号的凭据认证。按 REALITY、HY2、Cloudflare Tunnel 的顺序发布，核对节点名称、空格和图标。自动组按节点源中的实际顺序选线。
 
-在 3x-ui 开启 Clash 完整订阅和内嵌规则。将 DNS、策略组和规则写入共享模板，由面板为每份订阅注入该用户的三个节点。用户导入自己的**完整配置订阅**，以后刷新就能收到共享策略更新。
+在 3x-ui 开启订阅、Clash 订阅和 Clash 专用的内嵌规则。参考版本 3.11.0 对应 `subEnable`、`subClashEnable` 和 `subClashEnableRouting`。将 DNS、策略组和规则写入共享模板，由面板为每份订阅注入该用户的三个节点。用户导入自己的**完整配置订阅**，以后刷新就能收到共享策略更新。
 
 ### 3. 买家宽 SOCKS5
 

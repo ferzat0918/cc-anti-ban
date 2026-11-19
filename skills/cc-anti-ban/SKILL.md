@@ -94,6 +94,8 @@ Clash makes the first decision on the client. In rule mode, a request can go dir
 
 Xray makes the second decision on the VPS. Authenticated traffic defaults to that subscriber’s residential outbound. YouTube playback and dedicated APIs have a scoped VPS-direct exception. Sign-in keeps the account exit. Business-inbound traffic without a matching identity ends at `blocked`. Check the published profile and the running Xray rules when adapting this reference to another installation.
 
+For a new installation, account onboarding, a firewall check or a restore, follow the [infrastructure runbook](references/infrastructure.md). It covers DNS and certificate ownership, the two firewalls, the local services behind each public entry point, and recovery.
+
 Keep deployment addresses, credentials and subscription tokens in private configuration. [Beginner walkthrough](https://claude-d5bd.pages.grok.bot/)
 
 ## 0. Buy list (shopping spree, but smart)
@@ -132,7 +134,7 @@ Keep deployment addresses, credentials and subscription tokens in private config
 
 Bind **each subscriber to all three inbounds**, including subscribers added later. Reuse that subscriber’s own `subId` across the three bindings. Keep credentials distinct between people. Check the VLESS identity and Vision flow for REALITY, the Hysteria2 authentication value, and the WebSocket identity. The account label seen by Xray must match its `user` routes on every inbound.
 
-Enable the panel’s Clash subscription and embedded routing. Put shared DNS, groups and rules in the subscription template (`subClashRules` in the reference panel). Let the panel render each account’s own nodes. Set inbound publication order to match the table. Both selectors filter the **exact published names**, so a rename must be reflected in both filters. Compare the full YAML downloaded from each account’s normal subscription URL with the intended groups, rule order and node list.
+On 3x-ui 3.11.0, enable `subEnable`, `subClashEnable` and `subClashEnableRouting`. The separate `subEnableRouting` flag is off in the reference deployment. Put shared DNS, groups and rules in `subClashRules`. Let the panel render each account’s own nodes. Set inbound publication order to match the table. Both selectors filter the **exact published names**, so a rename must be reflected in both filters. Compare the full YAML downloaded from each account’s normal subscription URL with the intended groups, rule order and node list.
 
 ## 3. Buy ISP SOCKS5 (IPRoyal detail)
 1. Product: **ISP** (static), **not** rotating Residential (Residential = rotating, metered, shared pool—wrong tool). US city/state near the relay (video demo often picks a nearby US state such as NY when VPS is US)—prefer **Zero Fraud Score**; start with 1 IP.
@@ -143,7 +145,7 @@ Enable the panel’s Clash subscription and embedded routing. Put shared DNS, gr
    - Personal use: skip expensive shared / multi-user / concurrent-seat add-ons that dilute the IP.
    - Ballpark solo cost for coaching (verify live): often around **~$7–8/mo** (~¥50+) after sensible options—**don’t** group-buy this IP.
 3. After purchase open **Proxies**: protocol is often **HTTP by default**—switch to **SOCKS5** before using it.
-4. Copy credentials for the agent: host / port / user / pass **and** the page’s **format string** (the ready-made `user:pass@host:port` or provider format line). Paste that format line to the agent so wiring doesn’t guess separators wrong.
+4. Save the provider’s host, port, credentials and connection format in a private configuration or password manager. When discussing the format, substitute placeholders for the actual values.
 5. Whitelist = **only** the VPS public IP. Save everything privately (vault / password manager)—no public canvases.
 
 ---
@@ -228,6 +230,8 @@ If the exit differs, check the effective Clash mode and rule, selected node, Xra
 ---
 
 ## Soft router (later only, dessert)
+Verify the active WAN L3 device and the firewall’s output and forward hooks before claiming household-wide direct blocking. Test with an operator-controlled destination. [Home firewall checks](references/infrastructure.md#4-家庭防火墙与-openclash)
+
 For an existing OpenClash installation, stage and validate the updated subscription and overwrite against an isolated listener. Keep the operator’s selected profile and service state during testing. If the deployment already uses a local Xray bridge for REALITY compatibility, preserve its published node name so both filters still match.
 
 Whole-home later: e.g. **Netcore N60 Pro** (~¥600 class, often sold pre-flashed) or DIY **磊科** + opw OpenWrt + OpenClash/mihomo. Same simple groups, detailed rules. Soft router keeps the panel **24/7**—no “forgot Clash after reboot” and fewer mysterious client-side IP leaks when the toggle looked on. Do **not** block signup waiting for a soft router or ancient dialer-proxy chains. Soft router is optional stability candy after the PC Clash loop works—not a prerequisite for the seven steps. If they ask “推荐个软路由”, you may name N60 Pro / 磊科 DIY; still finish §0–§7 on PC first.
